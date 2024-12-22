@@ -5,6 +5,12 @@ import requests
 import datetime
 from datetime import date
 
+dotenv_path = os.path.join(os.path.dirname(__file__), "../.env")
+load_dotenv(dotenv_path)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+genai.configure(api_key=GEMINI_API_KEY)
+
 def get_context(query: str, topk: int = 3, lan: str = 'en', **params):
     docs = search_google(query, topk, lan, **params)
     doc_string = "\n\n".join(
@@ -92,3 +98,7 @@ def chat(topk: int = 10):
                              'parts':[response.text]})  
             print(f"({i}) {MODEL_NAME}:")
             print(response.text)
+
+if __name__ == "__main__":
+    chat()
+
