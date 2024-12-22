@@ -1,0 +1,6 @@
+python-dotenv
+httpx
+langchain-community
+beautifulsoup4
+requests
+google-generativeai
