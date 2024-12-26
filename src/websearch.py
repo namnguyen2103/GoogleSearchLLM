@@ -5,11 +5,35 @@ from langchain_community.document_loaders import WebBaseLoader
 from bs4 import BeautifulSoup
 import bs4
 import requests
+from langchain.docstore.document import Document
+import re
+from typing import List
 
 dotenv_path = os.path.join(os.path.dirname(__file__), "../.env")
 load_dotenv(dotenv_path)
 API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_KEY = os.getenv("SEARCH_KEY")
+
+# Helper function for preprocessing documents
+def preprocess_documents(documents: List[Document]) -> List[Document]:
+    processed_docs = []
+    for doc in documents:
+        # Remove excessive whitespace and newlines
+        text = re.sub(r'\s+', ' ', doc.page_content).strip()
+
+        # Remove any remaining script or style tags if they were not already removed
+        text = re.sub(r'<script.*?</script>', '', text, flags=re.DOTALL)
+        text = re.sub(r'<style.*?</style>', '', text, flags=re.DOTALL)
+
+        # Remove any leftover special characters and whitespace
+        text = re.sub(r'[^\w\s.,?!()/;-]', '', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        # Preserve the metadata (source, title, etc.)
+        processed_doc = Document(page_content=text, metadata=doc.metadata)
+        processed_docs.append(processed_doc)
+
+    return processed_docs
 
 # Main function to search, extract URLs, and load documents
 def search_google(query: str, topk: int = 3, lan: str = 'en', **params):
@@ -52,10 +76,11 @@ def search_google(query: str, topk: int = 3, lan: str = 'en', **params):
         # Load documents from the URLs
         loader = WebBaseLoader(
             web_paths=search_urls,  # Limit to top 3 URLs
-            bs_kwargs=dict(parse_only=bs4.SoupStrainer())
+            bs_kwargs=dict(parse_only=bs4.SoupStrainer()),
+            requests_kwargs={"timeout": 600}
         )
         docs = loader.load()
-        return docs
+        return preprocess_documents(docs)
 
         # # Create a formatted string of document data
         # doc_string = "\n\n".join(
@@ -69,3 +94,5 @@ def search_google(query: str, topk: int = 3, lan: str = 'en', **params):
 
         # return doc_string
 
+if __name__ == "__main__":
+    search_google('bitcoin price today', 10)
